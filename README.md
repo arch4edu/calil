@@ -9,21 +9,20 @@
 命令
 ----
 
-* Python >= 3.4
+* Python >= 3.5
 * curl
 * git
 * makepkg
 * zsh (batch)
 * nvchecker (batch)
 * gpg (batch)
-* Local MTA (batch)
 * devtools (batch)
 * pkgbuild-introspection (batch, for updating AUR)
-* pid_children (batch) (a program to find out descendant processes by pid)
+* [pid\_children](https://github.com/lilydjwg/pid_children) (batch) (a program to find out descendant processes by pid)
+* a SMTP server (batch, optional)
 
 Python 库
 ---------
 
 * requests
 * lxml
-* winterpy
