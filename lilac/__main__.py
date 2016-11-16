@@ -7,14 +7,13 @@ import glob
 import logging
 import configparser
 import time
-import smtplib
+from collections import defaultdict
 
 topdir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(topdir, 'libs'))
 
 # pylint: disable=wrong-import-position
-import myutils
-from myutils import at_dir
+from myutils import at_dir, execution_timeout
 from toposort import toposort_flatten # pylint: disable=import-error
 from nicelogger import enable_pretty_logging
 from serializer import PickledData
@@ -33,7 +32,6 @@ os.environ['PATH'] = topdir + ':' + os.environ['PATH']
 
 REPODIR = os.path.expanduser(config.get('repository', 'repodir'))
 DESTDIR = os.path.expanduser(config.get('repository', 'destdir'))
-REPOMAIL = config.get('repository', 'email')
 MYNAME = config.get('lilac', 'name')
 MYADDRESS = config.get('lilac', 'email')
 MYMASTER = config.get('lilac', 'master')
@@ -110,6 +108,8 @@ def build_package(package):
     name, email = maintainer.split('<', 1)
     name = name.strip('" ')
     email = email.rstrip('>')
+    BuildSession.set_packager(name, email)
+    # TODO: remove after run_cmd done
     os.environ['PACKAGER'] = '%s (on behalf of %s) <%s>' % (MYNAME, name, email)
     if is_nodejs_thing():
       # nodejs things have bad error handling. If they go mad, allow them to
@@ -151,7 +151,7 @@ def find_maintainer_or_admin(package=None):
     try:
       who = find_maintainer(MYADDRESS)
       more = ''
-    except:
+    except Exception:
       who = MYMASTER
       more = traceback.format_exc()
 
@@ -422,12 +422,12 @@ def setup():
     os.close(fd)
 
   enable_pretty_logging('DEBUG')
+
+  # TODO: remove after all run_cmds have been replaced
   if 'MAKEFLAGS' not in os.environ:
     cores = os.cpu_count()
     if cores is not None:
       os.environ['MAKEFLAGS'] = '-j{0} -l{0}'.format(cores)
-
-  myutils.lock_file(mydir + '/.lock')
 
   if not os.path.exists(oldver_file):
     open(oldver_file, 'a').close()

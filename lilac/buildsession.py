@@ -2,6 +2,7 @@ import os
 import configparser
 import smtplib
 
+import myutils
 from mailutils import assemble_mail
 
 class BuildSession:
@@ -14,6 +15,11 @@ class BuildSession:
     self.env = os.environ.copy()
     self.env.update(config.items('enviroment variables'))
 
+    if 'MAKEFLAGS' not in self.env:
+      cores = os.cpu_count()
+      if cores is not None:
+        self.env['MAKEFLAGS'] = '-j{0} -l{0}'.format(cores)
+
     self.repodir = os.path.expanduser(config.get('repository', 'repodir'))
     self.destdir = os.path.expanduser(config.get('repository', 'destdir'))
 
@@ -23,6 +29,9 @@ class BuildSession:
     self.myname = config.get('lilac', 'name')
     myaddress = config.get('lilac', 'email')
     self.myemail = '%s <%s>' % (self.myname, myaddress)
+
+    self.mydir = os.path.expanduser('~/.%s' % self.myname)
+    myutils.lock_file(os.path.join(self.mydir, '.lock'))
 
     self.send_email = config.getboolean('lilac', 'send_email')
 
