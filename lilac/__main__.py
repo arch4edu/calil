@@ -6,31 +6,21 @@ import traceback
 import glob
 import logging
 import configparser
-import fcntl
 import time
 import smtplib
 
 topdir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(topdir, 'libs'))
 
-def may_download_winterpy_libs():
-  import requests
-  os.makedirs(topdir+'/pylib', exist_ok=True)
-  libs = ['archpkg', 'htmlutils', 'mailutils', 'myutils',
-            'nicelogger', 'serializer']
-  s = requests.Session()
-  for name in libs:
-    name += '.py'
-    path = os.path.join(topdir, 'pylib', name)
-    if not os.path.exists(path):
-        print('Downloading %s' % name)
-        r = s.get('https://raw.githubusercontent.com/lilydjwg/winterpy/master/pylib/'+name)
-        with open(path, 'wb') as f:
-          f.write(r.content)
+# pylint: disable=wrong-import-position
+import myutils
+from myutils import at_dir
+from toposort import toposort_flatten # pylint: disable=import-error
+from nicelogger import enable_pretty_logging
+from serializer import PickledData
 
-if __name__ == '__main__':
-  may_download_winterpy_libs()
-
-sys.path.append(topdir+'/pylib')
+from . import lib as lilaclib
+from .lib import *
 
 config = configparser.ConfigParser()
 config.optionxform = lambda option: option
@@ -58,21 +48,8 @@ nvdata = {}
 nv_unchanged = {}
 DEPENDS = {}
 
-import lilaclib
-from lilaclib import *
-from toposort import toposort_flatten
-from nicelogger import enable_pretty_logging
-
 logger = logging.getLogger(__name__)
 build_logger = logging.getLogger('build')
-
-def lockit():
-  lock = os.open(mydir+'/.lock', os.O_WRONLY | os.O_CREAT, 0o600)
-  try:
-    fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
-  except BlockingIOError:
-    logger.warning('Waiting for lock to release...')
-    fcntl.flock(lock, fcntl.LOCK_EX)
 
 def setup_build_logger():
   handler = logging.FileHandler(os.path.join(mydir, 'build.log'))
@@ -406,7 +383,7 @@ def main(packages=None):
         need_rebuild_failed = failed_prev & changed
         # if pkgrel is updated, build a new release
         need_rebuild_pkgrel = {x for x in changed
-                              if pkgrel_changed(revisions, x)} - unknown
+                               if pkgrel_changed(revisions, x)} - unknown
         all_building = need_update | need_rebuild_failed | need_rebuild_pkgrel
 
         logger.info('these updated (pkgrel) packages should be rebuilt: %r',
@@ -446,7 +423,7 @@ def main(packages=None):
         git_reset_hard()
         if config.getboolean('lilac', 'git_push'):
           git_push()
-    except Exception as e:
+    except Exception:
       tb = traceback.format_exc()
       logger.exception('unexpected error')
       subject = '运行时错误'
@@ -469,7 +446,7 @@ def setup():
     if cores is not None:
       os.environ['MAKEFLAGS'] = '-j{0} -l{0}'.format(cores)
 
-  lockit()
+  myutils.lock_file(mydir + '/.lock')
 
   if not os.path.exists(oldver_file):
     open(oldver_file, 'a').close()
