@@ -73,3 +73,6 @@ class BuildSession:
       connection.login(username, password)
     return connection
 
+  def set_packager(self, name, email):
+    self.env['PACKAGER'] = '%s (on behalf of %s) <%s>' % (
+      self.myname, name, email)
