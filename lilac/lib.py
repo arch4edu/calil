@@ -21,7 +21,6 @@ import requests
 from nicelogger import enable_pretty_logging
 from htmlutils import parse_document_from_requests
 from myutils import at_dir
-from mailutils import assemble_mail
 import archpkg
 
 UserAgent = 'lilac/0.2 (package auto-build bot, by lilydjwg)'
@@ -37,12 +36,9 @@ PYPI_URL = 'https://pypi.python.org/pypi/%s/json'
 
 # to be override
 AUR_REPO_DIR = '/tmp'
-MAILTAG = 'lilac'
 
-def smtp_connect():
-  s = smtplib.SMTP()
-  s.connect()
-  return s
+def sendmail(to, from_, subject, msg):
+  pass
 
 def send_error_report(name, *, msg=None, exc=None, subject=None):
   # exc_info used as such needs Python 3.5+
@@ -203,14 +199,6 @@ def get_commit_and_email(head, file='*'):
   ]
   commit, author = run_cmd(cmd).rstrip().split(None, 1)
   return commit, author
-
-def sendmail(to, from_, subject, msg):
-  s = smtp_connect()
-  if len(msg) > 5 * 1024 ** 2:
-    msg = msg[:1024 ** 2] + '\n\n日志过长，省略ing……\n\n' + msg[-1024 ** 2:]
-  msg = assemble_mail('[%s] %s' % (MAILTAG, subject), to, from_, text=msg)
-  s.send_message(msg)
-  s.quit()
 
 def get_changed_packages(revisions, U=None):
   cmd = ["git", "diff", "--name-only", revisions]
@@ -600,3 +588,4 @@ def kill_child_processes():
 def is_nodejs_thing():
   with open('PKGBUILD') as f:
     return 'nodejs' in f.read()
+

@@ -20,11 +20,12 @@ from nicelogger import enable_pretty_logging
 from serializer import PickledData
 
 from . import lib as lilaclib
+from .buildsession import BuildSession
 from .lib import *
 
 config = configparser.ConfigParser()
 config.optionxform = lambda option: option
-config.read(topdir+'/config.ini')
+config.read(topdir+'/../config.ini')
 
 # Setting up enviroment variables
 os.environ.update(config.items('enviroment variables'))
@@ -36,8 +37,6 @@ REPOMAIL = config.get('repository', 'email')
 MYNAME = config.get('lilac', 'name')
 MYADDRESS = config.get('lilac', 'email')
 MYMASTER = config.get('lilac', 'master')
-MYEMAIL = MYNAME + ' <' + MYADDRESS + '>'
-send_email = config.getboolean('lilac', 'send_email')
 
 mydir = os.path.expanduser('~/.lilac')
 nvchecker_file = os.path.join(mydir, 'nvchecker.ini')
@@ -51,6 +50,9 @@ DEPENDS = {}
 logger = logging.getLogger(__name__)
 build_logger = logging.getLogger('build')
 
+Session = BuildSession(os.path.join(topdir, '../config.ini'))
+lilaclib.sendmail = Session.sendmail
+
 def setup_build_logger():
   handler = logging.FileHandler(os.path.join(mydir, 'build.log'))
   handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s', '%Y-%m-%d %H:%M:%S'))
@@ -60,23 +62,6 @@ def _check_dir(d):
   if isinstance(d, tuple):
     d = d[0]
   return os.path.isdir(os.path.join(REPODIR, d))
-
-def smtp_connect():
-  host = config.get('smtp', 'host', fallback='')
-  port = config.getint('smtp', 'port', fallback=0)
-  username = config.get('smtp', 'username', fallback='')
-  password = config.get('smtp', 'password', fallback='')
-  if config.getboolean('smtp', 'use_ssl', fallback=False):
-    smtp_cls = smtplib.SMTP_SSL
-  else:
-    smtp_cls = smtplib.SMTP
-  connection = smtp_cls(host, port)
-  if not host:
-    # __init__ doesn't connect; let's do it
-    connection.connect()
-  if username != '' and password != '':
-    connection.login(username, password)
-  return connection
 
 def check_depends(name, depends):
   failed = [d for d in depends if not _check_dir(d)]
@@ -208,8 +193,7 @@ def send_error_report(name, *, msg=None, exc=None, subject=None):
 
   msg = '\n'.join(msgs)
   logger.debug('mail to %s:\nsubject: %s\nbody: %s', who, subject, msg[:200])
-  if send_email:
-    sendmail(who, MYEMAIL, subject, msg)
+  Session.sendmail(who, subject, msg)
 
 def sign_and_copy():
   pkgs = [x for x in os.listdir() if x.endswith('.pkg.tar.xz')]
@@ -242,8 +226,7 @@ def packages_need_update(U):
     msg = '调用栈如下：\n\n' + tb
     if more:
       msg += '\n获取维护者信息也失败了！调用栈如下：\n\n' + more
-    if send_email:
-      sendmail(who, MYEMAIL, subject, msg)
+    Session.sendmail(who, subject, msg)
     raise
 
   all_known = set(full.sections())
@@ -281,8 +264,7 @@ def packages_need_update(U):
     if errorlines:
       msg += '以下软件包在更新检查时出错了：\n\n' + '\n'.join(
         errorlines) + '\n'
-    if send_email:
-      sendmail(REPOMAIL, MYEMAIL, subject, msg)
+    Session.send_repo_mail(subject, msg)
 
   for x in run_cmd(['nvcmp', nvchecker_file]).splitlines():
     pkg, oldver, _, newver = x.split()
@@ -428,8 +410,7 @@ def main(packages=None):
       logger.exception('unexpected error')
       subject = '运行时错误'
       msg = '调用栈如下：\n\n' + tb
-      if send_email:
-        sendmail(MYMASTER, MYEMAIL, subject, msg)
+      Session.send_master_mail(subject, msg)
 
 def setup():
   if config.getboolean('lilac', 'log_to_file'):
@@ -458,8 +439,6 @@ def setup():
   setup_build_logger()
   os.chdir(REPODIR)
   lilaclib.send_error_report = send_error_report
-  lilaclib.MAILTAG = MYNAME
-  lilaclib.smtp_connect = smtp_connect
 
 if __name__ == '__main__':
   try:

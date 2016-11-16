@@ -1,0 +1,66 @@
+import os
+import configparser
+import smtplib
+
+from mailutils import assemble_mail
+
+class BuildSession:
+  def __init__(self, config_file):
+    self.config = config = configparser.ConfigParser()
+    config.optionxform = lambda option: option
+    if not config.read(config_file):
+      raise Exception('failed to read config file', config_file)
+
+    self.env = os.environ.copy()
+    self.env.update(config.items('enviroment variables'))
+
+    self.repodir = os.path.expanduser(config.get('repository', 'repodir'))
+    self.destdir = os.path.expanduser(config.get('repository', 'destdir'))
+
+    self.repomail = config.get('repository', 'email')
+    self.mymaster = config.get('lilac', 'master')
+
+    self.myname = config.get('lilac', 'name')
+    myaddress = config.get('lilac', 'email')
+    self.myemail = '%s <%s>' % (self.myname, myaddress)
+
+    self.send_email = config.getboolean('lilac', 'send_email')
+
+  def send_repo_mail(self, subject, msg):
+    self.sendmail(self.repomail, subject, msg)
+
+  def send_master_mail(self, subject, msg):
+    self.sendmail(self.mymaster, subject, msg)
+
+  def sendmail(self, recipients, subject, msg):
+    if self.send_email:
+      subject = '[%s] %s' % (self.myname, subject)
+      self._sendmail(recipients, self.myemail, subject, msg)
+
+  def _sendmail(self, to, from_, subject, msg):
+    if len(msg) > 5 * 1024 ** 2:
+      msg = msg[:1024 ** 2] + '\n\n日志过长，省略ing……\n\n' + msg[-1024 ** 2:]
+    msg = assemble_mail(subject, to, from_, text=msg)
+    s = self._smtp_connect()
+    s.send_message(msg)
+    s.quit()
+
+  def _smtp_connect(self):
+    config = self.config
+
+    host = config.get('smtp', 'host', fallback='')
+    port = config.getint('smtp', 'port', fallback=0)
+    username = config.get('smtp', 'username', fallback='')
+    password = config.get('smtp', 'password', fallback='')
+    if config.getboolean('smtp', 'use_ssl', fallback=False):
+      smtp_cls = smtplib.SMTP_SSL
+    else:
+      smtp_cls = smtplib.SMTP
+    connection = smtp_cls(host, port)
+    if not host:
+      # __init__ doesn't connect; let's do it
+      connection.connect()
+    if username != '' and password != '':
+      connection.login(username, password)
+    return connection
+
