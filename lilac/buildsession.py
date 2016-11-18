@@ -2,6 +2,7 @@ import os
 import subprocess
 import configparser
 import smtplib
+import traceback
 
 import myutils
 from mailutils import assemble_mail
@@ -120,6 +121,16 @@ class BuildSession:
       _commit, author = line.rstrip().split(None, 1)
 
     return author
+
+  def find_maintainer_or_admin(self, *args, **kwargs):
+    try:
+      who = self.find_maintainer(*args, **kwargs)
+      more = ''
+    except Exception:
+      who = self.mymaster
+      more = traceback.format_exc()
+
+    return who, more
 
   def run_cmd(self, name, *args, **kwargs):
     if 'cwd' not in kwargs:

@@ -32,7 +32,6 @@ os.environ['PATH'] = os.path.join(topdir, '../bin') + ':' + os.environ['PATH']
 
 REPODIR = os.path.expanduser(config.get('repository', 'repodir'))
 MYNAME = config.get('lilac', 'name')
-MYADDRESS = config.get('lilac', 'email')
 MYMASTER = config.get('lilac', 'master')
 
 mydir = os.path.expanduser('~/.lilac')
@@ -140,24 +139,11 @@ def build_package(package):
     send_error_report(package, exc=(e, tb))
     build_logger.error('%s failed', package)
 
-def find_maintainer_or_admin(package=None):
-  if package is None:
-    package = os.path.split(os.getcwd())[-1]
-
-  try:
-    who = Session.find_maintainer(name=package)
-    more = ''
-  except Exception:
-    who = MYMASTER
-    more = traceback.format_exc()
-
-  return who, more
-
 def send_error_report(name, *, msg=None, exc=None, subject=None):
   if msg is None and exc is None:
     raise TypeError('send_error_report received inefficient args')
 
-  who, tb_find = find_maintainer_or_admin()
+  who, tb_find = Session.find_maintainer_or_admin(name)
 
   msgs = []
   if msg is not None:
@@ -198,12 +184,7 @@ def packages_need_update(U):
     full.read([nvchecker_full])
   except:
     tb = traceback.format_exc()
-    try:
-      who = Session.find_maintainer(file='nvchecker.ini')
-      more = ''
-    except:
-      who = MYMASTER
-      more = traceback.format_exc()
+    who, more = Session.find_maintainer_or_admin(file='nvchecker.ini')
 
     subject = 'nvchecker 配置文件错误'
     msg = '调用栈如下：\n\n' + tb
@@ -215,7 +196,7 @@ def packages_need_update(U):
   all_known = set(full.sections())
   unknown = U - all_known
   if unknown:
-    logger.warn('unknown packages: %r', unknown)
+    logger.warning('unknown packages: %r', unknown)
 
   newconfig = {k: full[k] for k in U & all_known}
   newconfig['__config__'] = {
