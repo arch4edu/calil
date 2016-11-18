@@ -28,7 +28,7 @@ config.read(topdir+'/../config.ini')
 
 # Setting up enviroment variables
 os.environ.update(config.items('enviroment variables'))
-os.environ['PATH'] = topdir + ':' + os.environ['PATH']
+os.environ['PATH'] = os.path.join(topdir, '../bin') + ':' + os.environ['PATH']
 
 REPODIR = os.path.expanduser(config.get('repository', 'repodir'))
 MYNAME = config.get('lilac', 'name')
