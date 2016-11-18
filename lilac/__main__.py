@@ -31,7 +31,6 @@ os.environ.update(config.items('enviroment variables'))
 os.environ['PATH'] = topdir + ':' + os.environ['PATH']
 
 REPODIR = os.path.expanduser(config.get('repository', 'repodir'))
-DESTDIR = os.path.expanduser(config.get('repository', 'destdir'))
 MYNAME = config.get('lilac', 'name')
 MYADDRESS = config.get('lilac', 'email')
 MYMASTER = config.get('lilac', 'master')
@@ -195,18 +194,7 @@ def send_error_report(name, *, msg=None, exc=None, subject=None):
   logger.debug('mail to %s:\nsubject: %s\nbody: %s', who, subject, msg[:200])
   Session.sendmail(who, subject, msg)
 
-def sign_and_copy():
-  pkgs = [x for x in os.listdir() if x.endswith('.pkg.tar.xz')]
-  for pkg in pkgs:
-    run_cmd(['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
-             '--detach-sign', '--', pkg])
-  for f in os.listdir():
-    if not f.endswith(('.pkg.tar.xz', '.pkg.tar.xz.sig', '.src.tar.gz')):
-      continue
-    try:
-      os.link(f, os.path.join(DESTDIR, f))
-    except FileExistsError:
-      pass
+sign_and_copy = Session.sign_and_copy
 
 def packages_need_update(U):
   full = configparser.ConfigParser(dict_type=dict, allow_no_value=True)

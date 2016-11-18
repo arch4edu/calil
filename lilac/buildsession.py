@@ -5,6 +5,8 @@ import smtplib
 import myutils
 from mailutils import assemble_mail
 
+from .run_cmd import run_cmd
+
 class BuildSession:
   def __init__(self, config_file):
     self.config = config = configparser.ConfigParser()
@@ -76,3 +78,16 @@ class BuildSession:
   def set_packager(self, name, email):
     self.env['PACKAGER'] = '%s (on behalf of %s) <%s>' % (
       self.myname, name, email)
+
+  def sign_and_copy(self):
+    pkgs = [x for x in os.listdir() if x.endswith('.pkg.tar.xz')]
+    for pkg in pkgs:
+      run_cmd(['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
+               '--detach-sign', '--', pkg])
+    for f in os.listdir():
+      if not f.endswith(('.pkg.tar.xz', '.pkg.tar.xz.sig', '.src.tar.gz')):
+        continue
+      try:
+        os.link(f, os.path.join(self.destdir, f))
+      except FileExistsError:
+        pass
