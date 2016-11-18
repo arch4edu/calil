@@ -6,7 +6,7 @@ import signal
 
 logger = logging.getLogger(__name__)
 
-def run_cmd(cmd, *, use_pty=False, silent=False, env=None):
+def run_cmd(cmd, *, use_pty=False, silent=False, env=None, cwd=None):
   logger.debug('running %r, %susing pty,%s showing output', cmd,
                '' if use_pty else 'not ',
                ' not' if silent else '')
@@ -27,7 +27,8 @@ def run_cmd(cmd, *, use_pty=False, silent=False, env=None):
 
   p = subprocess.Popen(
     cmd,
-    env = env or os.environ,
+    env = env,
+    cwd = cwd,
     stdin = stdin, stdout = stdout, stderr = subprocess.STDOUT,
   )
   if use_pty:

@@ -127,7 +127,7 @@ def build_package(package):
     except TimeoutError:
       kill_child_processes()
       raise
-    sign_and_copy()
+    Session.sign_and_copy(package)
     lilaclib.build_output = None
     build_logger.info('%s successful', package)
     return True
@@ -193,8 +193,6 @@ def send_error_report(name, *, msg=None, exc=None, subject=None):
   msg = '\n'.join(msgs)
   logger.debug('mail to %s:\nsubject: %s\nbody: %s', who, subject, msg[:200])
   Session.sendmail(who, subject, msg)
-
-sign_and_copy = Session.sign_and_copy
 
 def packages_need_update(U):
   full = configparser.ConfigParser(dict_type=dict, allow_no_value=True)

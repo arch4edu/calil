@@ -24,6 +24,7 @@ class BuildSession:
 
     self.repodir = os.path.expanduser(config.get('repository', 'repodir'))
     self.destdir = os.path.expanduser(config.get('repository', 'destdir'))
+    self.cwd = self.repodir
 
     self.repomail = config.get('repository', 'email')
     self.mymaster = config.get('lilac', 'master')
@@ -79,15 +80,19 @@ class BuildSession:
     self.env['PACKAGER'] = '%s (on behalf of %s) <%s>' % (
       self.myname, name, email)
 
-  def sign_and_copy(self):
-    pkgs = [x for x in os.listdir() if x.endswith('.pkg.tar.xz')]
+  def sign_and_copy(self, name):
+    self.cwd = os.path.join(self.repodir, name)
+    pkgs = [x for x in os.listdir(self.cwd) if x.endswith('.pkg.tar.xz')]
     for pkg in pkgs:
-      run_cmd(['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
-               '--detach-sign', '--', pkg])
-    for f in os.listdir():
+      self.run_cmd(['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
+                    '--detach-sign', '--', pkg])
+    for f in os.listdir(self.cwd):
       if not f.endswith(('.pkg.tar.xz', '.pkg.tar.xz.sig', '.src.tar.gz')):
         continue
       try:
         os.link(f, os.path.join(self.destdir, f))
       except FileExistsError:
         pass
+
+  def run_cmd(self, *args, **kwargs):
+    run_cmd(*args, env=self.env, cwd=self.cwd, **kwargs)
