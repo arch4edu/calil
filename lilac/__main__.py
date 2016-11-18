@@ -108,7 +108,7 @@ def build_package(package):
     name, email = maintainer.split('<', 1)
     name = name.strip('" ')
     email = email.rstrip('>')
-    BuildSession.set_packager(name, email)
+    Session.set_packager(name, email)
     # TODO: remove after run_cmd done
     os.environ['PACKAGER'] = '%s (on behalf of %s) <%s>' % (MYNAME, name, email)
     if is_nodejs_thing():
