@@ -186,21 +186,6 @@ def update_pkgrel(rel=None):
     f.write(pkgbuild)
   logger.info('pkgrel updated to %s', rel)
 
-def find_maintainer(me, file='*'):
-  head = 'HEAD'
-  while True:
-    commit, author = get_commit_and_email(head, file)
-    if me not in author:
-      return author
-    head = commit + '^'
-
-def get_commit_and_email(head, file='*'):
-  cmd = [
-    "git", "log", "-1", "--format=%H %an <%ae>", head, "--", file,
-  ]
-  commit, author = run_cmd(cmd).rstrip().split(None, 1)
-  return commit, author
-
 def get_changed_packages(revisions, U=None):
   cmd = ["git", "diff", "--name-only", revisions]
   r = run_cmd(cmd).splitlines()

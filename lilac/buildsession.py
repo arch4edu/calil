@@ -1,4 +1,5 @@
 import os
+import subprocess
 import configparser
 import smtplib
 
@@ -24,14 +25,13 @@ class BuildSession:
 
     self.repodir = os.path.expanduser(config.get('repository', 'repodir'))
     self.destdir = os.path.expanduser(config.get('repository', 'destdir'))
-    self.cwd = self.repodir
 
     self.repomail = config.get('repository', 'email')
     self.mymaster = config.get('lilac', 'master')
 
     self.myname = config.get('lilac', 'name')
-    myaddress = config.get('lilac', 'email')
-    self.myemail = '%s <%s>' % (self.myname, myaddress)
+    self.myaddress = config.get('lilac', 'email')
+    self.myemail = '%s <%s>' % (self.myname, self.myaddress)
 
     self.mydir = os.path.expanduser('~/.%s' % self.myname)
     myutils.lock_file(os.path.join(self.mydir, '.lock'))
@@ -81,12 +81,13 @@ class BuildSession:
       self.myname, name, email)
 
   def sign_and_copy(self, name):
-    self.cwd = os.path.join(self.repodir, name)
-    pkgs = [x for x in os.listdir(self.cwd) if x.endswith('.pkg.tar.xz')]
+    cwd = os.path.join(self.repodir, name)
+    pkgs = [x for x in os.listdir(cwd) if x.endswith('.pkg.tar.xz')]
     for pkg in pkgs:
-      self.run_cmd(['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
-                    '--detach-sign', '--', pkg])
-    for f in os.listdir(self.cwd):
+      self.run_cmd(
+        name, ['gpg', '--pinentry-mode', 'loopback', '--passphrase', '',
+               '--detach-sign', '--', pkg])
+    for f in os.listdir(cwd):
       if not f.endswith(('.pkg.tar.xz', '.pkg.tar.xz.sig', '.src.tar.gz')):
         continue
       try:
@@ -94,5 +95,34 @@ class BuildSession:
       except FileExistsError:
         pass
 
-  def run_cmd(self, *args, **kwargs):
-    run_cmd(*args, env=self.env, cwd=self.cwd, **kwargs)
+  def find_maintainer(self, name=None, file='*', head='HEAD'):
+    if name:
+      cwd = os.path.join(self.repodir, name)
+    else:
+      cwd = self.repodir
+
+    cmd = [
+      "git", "log", "--format=%H %an <%ae>", head, "--", file,
+    ]
+    p = subprocess.Popen(
+      cmd,
+      cwd = cwd,
+      env = self.env,
+      stdout = subprocess.PIPE,
+      stdin = subprocess.DEVNULL,
+      universal_newlines = True,
+    )
+    for line in p.stdout:
+      if self.myaddress in line:
+        continue
+      p.stdout.close()
+      p.wait()
+      _commit, author = line.rstrip().split(None, 1)
+
+    return author
+
+  def run_cmd(self, name, *args, **kwargs):
+    if 'cwd' not in kwargs:
+      cwd = os.path.join(self.repodir, name)
+      kwargs['cwd'] = cwd
+    run_cmd(*args, env=self.env, **kwargs)

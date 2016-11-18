@@ -103,7 +103,7 @@ def build_package(package):
   logger.info('building %s', package)
   try:
     n = nvdata.get(package, (nv_unchanged[package],) * 2)
-    maintainer = find_maintainer(MYADDRESS)
+    maintainer = Session.find_maintainer(name=package)
     name, email = maintainer.split('<', 1)
     name = name.strip('" ')
     email = email.rstrip('>')
@@ -141,18 +141,15 @@ def build_package(package):
     build_logger.error('%s failed', package)
 
 def find_maintainer_or_admin(package=None):
-  if package is not None:
-    path = os.path.join(REPODIR, package)
-  else:
-    path = '.'
+  if package is None:
+    package = os.path.split(os.getcwd())[-1]
 
-  with at_dir(path):
-    try:
-      who = find_maintainer(MYADDRESS)
-      more = ''
-    except Exception:
-      who = MYMASTER
-      more = traceback.format_exc()
+  try:
+    who = Session.find_maintainer(name=package)
+    more = ''
+  except Exception:
+    who = MYMASTER
+    more = traceback.format_exc()
 
   return who, more
 
@@ -202,7 +199,7 @@ def packages_need_update(U):
   except:
     tb = traceback.format_exc()
     try:
-      who = find_maintainer(MYADDRESS, file='nvchecker.ini')
+      who = Session.find_maintainer(file='nvchecker.ini')
       more = ''
     except:
       who = MYMASTER
