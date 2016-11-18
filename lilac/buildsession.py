@@ -136,4 +136,4 @@ class BuildSession:
     if 'cwd' not in kwargs:
       cwd = os.path.join(self.repodir, name)
       kwargs['cwd'] = cwd
-    run_cmd(*args, env=self.env, **kwargs)
+    return run_cmd(*args, env=self.env, **kwargs)

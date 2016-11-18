@@ -32,7 +32,6 @@ os.environ['PATH'] = os.path.join(topdir, '../bin') + ':' + os.environ['PATH']
 
 REPODIR = os.path.expanduser(config.get('repository', 'repodir'))
 MYNAME = config.get('lilac', 'name')
-MYMASTER = config.get('lilac', 'master')
 
 mydir = os.path.expanduser('~/.lilac')
 nvchecker_file = os.path.join(mydir, 'nvchecker.ini')
